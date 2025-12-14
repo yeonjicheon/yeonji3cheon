@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2025 by anonymous (http://jsbin.com/fotisoqimi/1/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>편지 작성 및 전송 시뮬레이션 (최종 - 이미지 편지함 적용 완료)</title>
+    
+    <style>
+        /* ======================================= */
+        /* CSS: Grid 레이아웃 및 스타일 */
+        /* ======================================= */
+        
+        /* 배경 이미지 크기 조절 변수 */
+        :root {
+            --body-bg-size: cover;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 웹 페이지 전체 배경 이미지 적용 */
+        body {
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            
+            background-image: url('https://i.imgur.com/gxoSwlS.png');
+            background-size: var(--body-bg-size);
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-attachment: fixed;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 4fr 1fr;
+            height: 100%;
+            background-color: transparent;
+            grid-gap: 0;
+        }
+
+        /* 그리드 내 박스 스타일 */
+        .grid > div {
+            background-color: rgba(255, 255, 255, 0);
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 왼쪽 콘텐츠 박스 */
+        .left-content {
+             background-color: transparent;
+             box-shadow: none;
+             color: #333;
+             padding: 9%;
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             justify-content: center;
+        }
+
+
+        h1 {
+            text-align: center;
+        }
+
+        /* 입력 창 기본 스타일 */
+        #animated-text {
+            flex-grow: 0;
+            width: 80%;
+            border: 0px solid #333;
+            background-color: transparent;
+            font-size: 1.5em;
+            padding: 15px;
+            font-family: serif;
+            resize: none;
+            outline: none;
+            margin-bottom: 20px;
+            height: 50vh;
+        }
+
+        /* 텍스트 굵기 변경 애니메이션 */
+        @keyframes writing-pulse {
+            0%, 100% { font-weight: 300; }
+            60% { font-weight: 900; }
+        }
+        .writing-active {
+            animation: writing-pulse 1.5s infinite alternate;
+        }
+
+        /* 오른쪽 사이드바 영역 */
+        .right-sidebar {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative; 
+        }
+        
+        #status-display {
+            width: 100%;
+            margin-top: 50px;
+            margin-bottom: 20px;
+        }
+        
+        /* 수신 중 이미지 크기 설정 */
+        #sending-image {
+            height: 250px;
+            width: 250px;
+            object-fit: contain;
+            margin-top: 30px;
+        }
+        
+        #status-message {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        /* 보내기 버튼 스타일 */
+        #send-button {
+            padding: 12px 20px;
+            background-color: black;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2em;
+            border-radius: 1px;
+            transition: background-color 0.3s;
+            margin-bottom: 15px;
+        }
+        #send-button:hover { background-color: gray; }
+
+        /* 보낸 편지 보기 토글 버튼 스타일 */
+        #toggle-history-button {
+            padding: 10px 15px;
+            background-color: #333; 
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9em;
+            border-radius: 1px;
+            transition: background-color 0.3s;
+            margin-bottom: 10px;
+        }
+        #toggle-history-button:hover { background-color: #555; }
+
+
+        /* ★★★ 이미지 편지함 컨테이너 ★★★ */
+        #history-log-container {
+            width: 100%;
+            text-align: center; 
+            padding: 0;
+            display: none; /* 기본적으로 숨김 처리 */
+            flex-direction: column;
+            align-items: center;
+            flex-grow: 0; /* <--- 추가: 컨테이너 크기가 늘어나지 않도록 고정 */
+        }
+
+        /* 이미지 배경 요소 */
+        #history-log-background {
+            width: 300px; 
+            height: 380px; 
+            margin: 0 auto; 
+            background-image: url('https://i.imgur.com/GVcbq3v.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center top;
+            position: relative;
+            
+            /* 텍스트가 흰색 편지지 부분에 오도록 패딩 조정 */
+            padding: 90px 45px 35px 45px; 
+            
+            overflow: hidden; 
+            box-sizing: border-box;
+        }
+
+        /* 실제 로그 영역 (스크롤 적용) */
+        #history-log {
+            width: 100%;
+            height: 100%;
+            overflow-y: scroll; 
+            background-color: transparent; 
+            color: black; 
+            padding-right: 10px; 
+        }
+        
+        /* 텍스트 스타일 */
+        .history-item {
+            background-color: transparent;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1); 
+            padding: 10px 0;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            color: black; 
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        /* ★★★ 하단 장식 이미지 스타일 (고정 표시, 위치 조정됨) ★★★ */
+        #bottom-image {
+            width: 100%; 
+            max-width: 250px; 
+            object-fit: contain;
+            margin-top: 5px; 
+            margin-bottom: 65px; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="grid">
+    
+    <div class="left-content">
+        <textarea id="animated-text" placeholder="여기에 편지 내용을 입력하세요..." rows="10"></textarea>
+    </div>
+    
+    <div class="right-sidebar">
+        
+        <div id="status-display">
+            <h1>전송 상태</h1>
+            <img id="sending-image" src="https://i.imgur.com/bgw2HsJ.png" alt="수신 중 이미지" style="display: none;">
+            
+            <p id="status-message">버튼을 눌러 편지를 보내세요.</p>
+        </div>
+        
+        <button id="send-button"> 보내기</button>
+
+        <button id="toggle-history-button">보낸 편지 보기</button>
+
+        <div id="history-log-container">
+            <div id="history-log-background">
+                <div id="history-log">
+                    <p style="text-align: center; color: black; padding-top: 10px;">전송된 편지가<br>없습니다.</p>
+                </div>
+            </div>
+        </div>
+        
+        <img id="bottom-image" src="https://i.imgur.com/frdZA6H.png" alt="하단 장식 이미지" style="display: block;">
+    </div>
+</div>
+
+<script>
+    // =======================================
+    // JavaScript: 애니메이션, 전송, 히스토리 기능
+    // =======================================
+    document.addEventListener("DOMContentLoaded", function () {
+        const textarea = document.getElementById('animated-text');
+        const sendButton = document.getElementById('send-button');
+        const sendingImage = document.getElementById('sending-image');
+        const statusMessage = document.getElementById('status-message');
+        
+        const historyLogContainer = document.getElementById('history-log-container'); 
+        const historyLog = document.getElementById('history-log');
+        const toggleHistoryButton = document.getElementById('toggle-history-button'); 
+        const bottomImage = document.getElementById('bottom-image'); 
+
+        const IMAGE_URL_1 = 'https://i.imgur.com/bgw2HsJ.png';
+        const IMAGE_URL_2 = 'https://i.imgur.com/TS5j1fb.png';
+        let intervalId;
+        
+        let letterHistory = [];
+
+        // 배열 내용을 무작위 순서로 섞는 함수
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[i], array[j]];
+            }
+            return array;
+        }
+
+        // 히스토리 로그를 무작위 순서로 표시하는 함수
+        function showRandomHistory() {
+            if (letterHistory.length === 0) {
+                historyLog.innerHTML = '<p style="text-align: center; color: black; padding-top: 10px;">전송된 편지가<br>없습니다.</p>';
+                return;
+            }
+
+            const shuffledHistory = shuffleArray([...letterHistory]);
+            historyLog.innerHTML = '';
+
+            shuffledHistory.forEach(content => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.textContent = content;
+                historyLog.appendChild(div);
+            });
+        }
+        
+        // 보낸 편지 보기 토글 기능
+        toggleHistoryButton.addEventListener('click', function() {
+            if (historyLogContainer.style.display === 'none' || historyLogContainer.style.display === '') {
+                showRandomHistory(); 
+                historyLogContainer.style.display = 'flex'; 
+                toggleHistoryButton.textContent = "보낸 편지 숨기기";
+            } else {
+                historyLogContainer.style.display = 'none'; 
+                toggleHistoryButton.textContent = "보낸 편지 보기";
+            }
+        });
+
+        // 텍스트 입력 시 애니메이션 토글 기능
+        textarea.addEventListener('input', function() {
+            if (this.value.length > 0) {
+                this.classList.add('writing-active');
+            } else {
+                this.classList.remove('writing-active');
+            }
+        });
+
+        // 보내기 버튼 클릭 시 수신 중 기능 구현
+        sendButton.addEventListener('click', function() {
+            const letterContent = textarea.value.trim();
+            
+            if (letterContent === "") {
+                alert("편지 내용을 입력해주세요!");
+                return;
+            }
+
+            // 전송 시작
+            sendingImage.style.display = 'block';
+            sendButton.disabled = true;
+            textarea.disabled = true;
+            statusMessage.textContent = "편지를 수신 중입니다...";
+            statusMessage.style.color = '#gray';
+            
+            // 이미지 깜빡임 시작 (500ms 간격)
+            let toggle = true;
+            intervalId = setInterval(() => {
+                sendingImage.src = toggle ? IMAGE_URL_2 : IMAGE_URL_1;
+                toggle = !toggle;
+            }, 500);
+
+            // 5초 후 전송 완료 시뮬레이션
+            setTimeout(() => {
+                // 깜빡임 중지 및 초기화
+                clearInterval(intervalId);
+                
+                alert("편지 전송 완료!");
+                
+                // 전송된 내용 저장
+                letterHistory.push(letterContent);
+                showRandomHistory(); 
+
+                // 전송 완료 후 상태 초기화
+                sendingImage.style.display = 'none';
+                sendingImage.src = IMAGE_URL_1; 
+                sendButton.disabled = false;
+                textarea.disabled = false;
+                textarea.value = '';
+                textarea.classList.remove('writing-active');
+                
+                statusMessage.textContent = "전송 완료! 새로운 편지를 작성하세요.";
+                statusMessage.style.color = 'green';
+
+                // 2초 후 메시지 초기화
+                setTimeout(() => {
+                    statusMessage.textContent = "버튼을 눌러 편지를 보내세요.";
+                    statusMessage.style.color = 'initial';
+                }, 2000);
+
+            }, 5000); // 5초 대기
+        });
+    });
+</script>
+</body>
+</html>
